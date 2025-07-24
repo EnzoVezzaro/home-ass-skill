@@ -43,7 +43,7 @@ describe('Items Routes', () => {
       const response = await request(app).get('/api/items');
 
       expect(response.status).toBe(200);
-      expect(response.body).toEqual(JSON.parse(mockItemsData));
+      expect(response.body.items).toEqual(JSON.parse(mockItemsData));
     });
 
     it('should return a 500 error if file reading fails', async () => {
@@ -61,8 +61,8 @@ describe('Items Routes', () => {
       const response = await request(app).get('/api/items?limit=2');
 
       expect(response.status).toBe(200);
-      expect(response.body).toHaveLength(2);
-      expect(response.body).toEqual([
+      expect(response.body.items).toHaveLength(2);
+      expect(response.body.items).toEqual([
         { "id": 1, "name": "Laptop Pro", "category": "Electronics", "price": 2499 },
         { "id": 2, "name": "Noise Cancelling Headphones", "category": "Electronics", "price": 399 }
       ]);
@@ -74,8 +74,8 @@ describe('Items Routes', () => {
       const response = await request(app).get('/api/items?q=Chair');
 
       expect(response.status).toBe(200);
-      expect(response.body).toHaveLength(1);
-      expect(response.body).toEqual([
+      expect(response.body.items).toHaveLength(1);
+      expect(response.body.items).toEqual([
         { "id": 4, "name": "Ergonomic Chair", "category": "Furniture", "price": 799 }
       ]);
     });
@@ -86,8 +86,8 @@ describe('Items Routes', () => {
       const response = await request(app).get('/api/items?q=Laptop&limit=1');
 
       expect(response.status).toBe(200);
-      expect(response.body).toHaveLength(1);
-      expect(response.body).toEqual([
+      expect(response.body.items).toHaveLength(1);
+      expect(response.body.items).toEqual([
         { "id": 1, "name": "Laptop Pro", "category": "Electronics", "price": 2499 },
       ]);
     });
@@ -98,7 +98,7 @@ describe('Items Routes', () => {
       const response = await request(app).get('/api/items?limit=abc');
 
       expect(response.status).toBe(200);
-      expect(response.body).toEqual([]);
+      expect(response.body.items).toEqual([]);
     });
   });
 

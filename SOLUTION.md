@@ -1,3 +1,5 @@
+Backend
+
 - add .env file to .gitignore
 - change npm to pnpm
 - change port backend from 5000 to 8000
@@ -14,4 +16,18 @@
 3. **Testing**  
 - added jest to the project
 - create tests cases for Items (happy + error)
-- 
+
+Frontend
+
+1. **Memory Leak**  
+   - `Items.js` leaks memory if the component unmounts before fetch completes. Fix it.
+
+2. **Pagination & Search**  
+  - Implement paginated list with server‑side search (`q` param).
+  - Updated backend list functions
+  - Updated test on changed functions
+
+3. **Performance**  
+   - Added a 500 records large file 
+   - Integrated react-window to UI frontend
+

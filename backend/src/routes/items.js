@@ -7,19 +7,38 @@ router.get('/', async (req, res, next) => {
   try {
     const data = await readData();
     
-    const { limit, q } = req.query;
-    let results = data;
+    // Parse query parameters for search and pagination
+    const { q, limit = 5, page = 1 } = req.query; // Default limit to 5, page to 1
 
+    let filteredData = data;
+
+    // Apply search filter if 'q' is provided
     if (q) {
-      // Simple substring search (sub‑optimal)
-      results = results.filter(item => item.name.toLowerCase().includes(q.toLowerCase()));
+      filteredData = data.filter(item => 
+        item.name.toLowerCase().includes(q.toLowerCase()) ||
+        (item.category && item.category.toLowerCase().includes(q.toLowerCase())) // Also search by category if it exists
+      );
     }
 
-    if (limit) {
-      results = results.slice(0, parseInt(limit));
-    }
+    // Calculate pagination indices
+    const pageNumber = parseInt(page);
+    const limitNumber = parseInt(limit);
+    const startIndex = (pageNumber - 1) * limitNumber;
+    const endIndex = startIndex + limitNumber;
 
-    res.json(results);
+    // Apply pagination slicing
+    const paginatedResults = filteredData.slice(startIndex, endIndex);
+
+    // Calculate total items and total pages
+    const totalItems = filteredData.length;
+    const totalPages = Math.ceil(totalItems / limitNumber);
+
+    res.json({
+      items: paginatedResults,
+      totalPages: totalPages,
+      currentPage: pageNumber,
+      totalItems: totalItems
+    });
   } catch (err) {
     next(err);
   }

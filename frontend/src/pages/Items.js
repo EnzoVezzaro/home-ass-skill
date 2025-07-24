@@ -1,37 +1,61 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useData } from '../state/DataContext';
 import { Link } from 'react-router-dom';
+import { FixedSizeList } from 'react-window';
 
 function Items() {
-  const { items, fetchItems } = useData();
+  // Destructure items, fetchItems, totalPages, totalItems from context
+  const { items, fetchItems, totalPages: contextTotalPages, totalItems: contextTotalItems } = useData(); 
   const isMountedRef = useRef(true);
+  const abortControllerRef = useRef(null); // Use ref for AbortController to persist across renders
 
+  // State for search and pagination
+  const [searchQuery, setSearchQuery] = useState(''); // Controlled input state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(5); // Default to match backend
+  const [isLoading, setIsLoading] = useState(true); // Loading state
+
+  // Use context values for totalPages and totalItems
+  const totalPages = contextTotalPages;
+  const totalItems = contextTotalItems;
+
+  // Main effect for fetching data when dependencies change
   useEffect(() => {
-    // Create AbortController for request cancellation
-    const abortController = new AbortController();
-    isMountedRef.current = true;
+    // Silently abort any previous request to avoid race conditions
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+    const signal = abortControllerRef.current.signal;
 
-    // Fetch items with proper cleanup handling
+    isMountedRef.current = true; // Mark component as mounted
+
     const fetchData = async () => {
+      // Early return if component is unmounted
+      if (!isMountedRef.current) return;
+
+      setIsLoading(true); // Show loading state
+
       try {
-        // Pass abort signal if fetchItems supports it
-        await fetchItems(abortController.signal);
+        // Fetch items with current search query, page, and items per page
+        await fetchItems(searchQuery, currentPage, itemsPerPage, signal);
         
-        // Only proceed if component is still mounted and request wasn't aborted
-        if (!isMountedRef.current || abortController.signal.aborted) {
-          console.log('Component unmounted or request aborted');
-          return;
-        }
+        // Note: Pagination metadata is updated within fetchItems via context setters
+        // so we don't need to handle response data here
       } catch (error) {
-        // Don't log aborted requests as errors
+        // Silently handle aborted requests - this is normal behavior during search/pagination
         if (error.name === 'AbortError') {
-          console.log('Request was cancelled');
-          return;
+          return; // Don't log - this is expected when user types or changes pages
         }
         
         // Only log actual errors if component is still mounted
         if (isMountedRef.current) {
           console.error('Error fetching items:', error);
+        }
+      } finally {
+        // Always set loading to false when done (success or error)
+        if (isMountedRef.current) {
+          setIsLoading(false);
         }
       }
     };
@@ -41,20 +65,98 @@ function Items() {
     // Cleanup function to prevent memory leaks
     return () => {
       isMountedRef.current = false;
-      abortController.abort(); // Cancel ongoing request
+      // Silently abort on cleanup - this is normal behavior
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
     };
-  }, [fetchItems]);
+  }, [fetchItems, searchQuery, currentPage, itemsPerPage]); // Re-fetch when these change
 
-  if (!items.length) return <p>Loading...</p>;
+  // Search input handler - maintains focus by using controlled component pattern
+  const handleSearchChange = (event) => {
+    setSearchQuery(event.target.value);
+    setCurrentPage(1); // Reset to first page when search changes
+  };
+
+  // Pagination handlers
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  // Loading state - show loading indicator
+  if (isLoading) {
+    return (
+      <div>
+        <div>
+          <input
+            type="text"
+            placeholder="Search items..."
+            value={searchQuery}
+            onChange={handleSearchChange}
+          />
+        </div>
+        <p>Loading...</p>
+      </div>
+    );
+  }
 
   return (
-    <ul>
-      {items.map(item => (
-        <li key={item.id}>
-          <Link to={`/items/${item.id}`}>{item.name}</Link>
-        </li>
-      ))}
-    </ul>
+    <div>
+      {/* Search Input - controlled component to maintain focus */}
+      <div>
+        <input
+          type="text"
+          placeholder="Search items..."
+          value={searchQuery}
+          onChange={handleSearchChange}
+        />
+      </div>
+
+      {/* Conditional rendering: show items list or no items message */}
+      {/* Render list using react-window */}
+      {items.length > 0 && (
+        <FixedSizeList
+          height={400} // Adjust height as needed
+          itemCount={items.length}
+          itemSize={30} // Adjust item height as needed
+          width="100%"
+          itemData={{ items, Link }} // Pass items and Link component
+        >
+          {({ index, style, data }) => (
+            <div style={style}>
+              <Link to={`/items/${data.items[index].id}`}>{data.items[index].name}</Link>
+            </div>
+          )}
+        </FixedSizeList>
+      )}
+      {!items.length && <p>No items found.</p>}
+
+      {/* Pagination Controls - only show if more than 1 page */}
+      {totalPages > 1 && (
+        <div>
+          <button onClick={handlePrevPage} disabled={currentPage === 1}>
+            Previous
+          </button>
+          <span> Page {currentPage} of {totalPages} </span>
+          <button onClick={handleNextPage} disabled={currentPage === totalPages}>
+            Next
+          </button>
+        </div>
+      )}
+
+      {/* Display total items count */}
+      <div>
+        Showing {items.length} of {totalItems} items.
+      </div>
+    </div>
   );
 }
 
