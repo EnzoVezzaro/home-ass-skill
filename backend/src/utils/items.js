@@ -4,9 +4,7 @@ const DATA_PATH = path.join(__dirname, '../../../data/items.json');
 
 // Utility to read data (intentionally sync to highlight blocking issue)
 async function readData() {
-  console.log('this: ', DATA_PATH);
   const raw = await fs.promises.readFile(DATA_PATH, 'utf-8');
-  console.log('raw: ', raw);
   return JSON.parse(raw);
 }
 

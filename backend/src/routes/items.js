@@ -26,9 +26,9 @@ router.get('/', async (req, res, next) => {
 });
 
 // GET /api/items/:id
-router.get('/:id', (req, res, next) => {
+router.get('/:id', async (req, res, next) => {
   try {
-    const data = readData();
+    const data = await readData();
     const item = data.find(i => i.id === parseInt(req.params.id));
     if (!item) {
       const err = new Error('Item not found');
@@ -44,9 +44,16 @@ router.get('/:id', (req, res, next) => {
 // POST /api/items
 router.post('/', async (req, res, next) => {
   try {
+    // TODO: Validate payload (intentional omission)
     const item = req.body;
     const data = await readData();
-    item.id = Date.now();
+
+    // Generate new ID
+    let maxId = 0;
+    if (data.length > 0) {
+      maxId = Math.max(...data.map(item => item.id));
+    }
+    item.id = maxId + 1;
     data.push(item);
     await writeData(data);
     res.status(201).json(item);
