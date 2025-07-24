@@ -1,11 +1,11 @@
 import { useEffect, useState, useRef } from 'react';
 import { useData } from '../state/DataContext';
-import { Link } from 'react-router-dom';
+import Modal from '../components/Modal'; // Import the Modal component
 import { FixedSizeList } from 'react-window';
 
 function Items() {
-  // Destructure items, fetchItems, totalPages, totalItems from context
-  const { items, fetchItems, totalPages: contextTotalPages, totalItems: contextTotalItems } = useData(); 
+  // Destructure items, fetchItems, totalPages, totalItems, selectedItem, isModalOpen, fetchItemById, closeModal from context
+  const { items, fetchItems, totalPages: contextTotalPages, totalItems: contextTotalItems, selectedItem, isModalOpen, fetchItemById, closeModal } = useData(); 
   const isMountedRef = useRef(true);
   const abortControllerRef = useRef(null); // Use ref for AbortController to persist across renders
 
@@ -91,71 +91,91 @@ function Items() {
     }
   };
 
+  // Handle item click to open modal
+  const handleItemClick = (item) => {
+    fetchItemById(item.id); // Fetch item details and open modal
+  };
+
   // Loading state - show loading indicator
   if (isLoading) {
     return (
-      <div>
-        <div>
+      <div className="container mx-auto p-4">
+        <div className="mb-4">
           <input
             type="text"
             placeholder="Search items..."
             value={searchQuery}
             onChange={handleSearchChange}
+            className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
-        <p>Loading...</p>
+        <p className="text-center text-gray-500">Loading...</p>
       </div>
     );
   }
 
   return (
-    <div>
-      {/* Search Input - controlled component to maintain focus */}
-      <div>
+    <div className="container mx-auto p-4">
+      {/* Search Input */}
+      <div className="mb-4">
         <input
           type="text"
           placeholder="Search items..."
           value={searchQuery}
           onChange={handleSearchChange}
+          className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
 
-      {/* Conditional rendering: show items list or no items message */}
-      {/* Render list using react-window */}
-      {items.length > 0 && (
+      {/* Items List */}
+      {items.length > 0 ? (
         <FixedSizeList
           height={400} // Adjust height as needed
           itemCount={items.length}
-          itemSize={30} // Adjust item height as needed
+          itemSize={40} // Adjust item height for better spacing
           width="100%"
-          itemData={{ items, Link }} // Pass items and Link component
+          itemData={{ items }} // Pass items
         >
           {({ index, style, data }) => (
-            <div style={style}>
-              <Link to={`/items/${data.items[index].id}`}>{data.items[index].name}</Link>
+            <div 
+              style={style} 
+              className="p-2 border-b border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors duration-200 flex items-center justify-between"
+              onClick={() => handleItemClick(data.items[index])}
+            >
+              <span className="text-lg font-medium">{data.items[index].name}</span>
+              {/* Optionally add an icon or arrow here */}
+              <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path></svg>
             </div>
           )}
         </FixedSizeList>
+      ) : (
+        <p className="text-center text-gray-500">No items found.</p>
       )}
-      {!items.length && <p>No items found.</p>}
 
-      {/* Pagination Controls - only show if more than 1 page */}
+      {/* Pagination Controls */}
       {totalPages > 1 && (
-        <div>
-          <button onClick={handlePrevPage} disabled={currentPage === 1}>
+        <div className="flex justify-center items-center mt-4 space-x-2">
+          <button onClick={handlePrevPage} disabled={currentPage === 1} className="px-4 py-2 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed">
             Previous
           </button>
-          <span> Page {currentPage} of {totalPages} </span>
-          <button onClick={handleNextPage} disabled={currentPage === totalPages}>
+          <span className="text-gray-700">Page {currentPage} of {totalPages}</span>
+          <button onClick={handleNextPage} disabled={currentPage === totalPages} className="px-4 py-2 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed">
             Next
           </button>
         </div>
       )}
 
       {/* Display total items count */}
-      <div>
+      <div className="text-center mt-4 text-gray-600">
         Showing {items.length} of {totalItems} items.
       </div>
+
+      {/* Modal */}
+      <Modal 
+        isOpen={isModalOpen} 
+        onClose={closeModal} 
+        item={selectedItem} 
+      />
     </div>
   );
 }

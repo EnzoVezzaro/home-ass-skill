@@ -1,8 +1,10 @@
-Backend
+General
 
 - add .env file to .gitignore
 - change npm to pnpm
 - change port backend from 5000 to 8000
+
+Backend
 
 1. **Refactor blocking I/O**  
 - refactor readData function to make it async
