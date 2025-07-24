@@ -10,7 +10,7 @@ async function readData() {
 
 // Utility to write data asynchronously
 async function writeData(data) {
-  await fs.writeFile(DATA_PATH, JSON.stringify(data, null, 2), 'utf8');
+  await fs.promises.writeFile(DATA_PATH, JSON.stringify(data, null, 2), 'utf8');
 }
 
 module.exports = { readData, writeData };

@@ -45,7 +45,15 @@ router.get('/:id', async (req, res, next) => {
 router.post('/', async (req, res, next) => {
   try {
     // TODO: Validate payload (intentional omission)
-    const item = req.body;
+    const { name, category, price } = req.body;
+
+    if (!name) {
+      const err = new Error('Name is required');
+      err.status = 400;
+      throw err;
+    }
+
+    const item = { id: 0, name, category, price }; // Create item with provided fields
     const data = await readData();
 
     // Generate new ID
@@ -55,8 +63,15 @@ router.post('/', async (req, res, next) => {
     }
     item.id = maxId + 1;
     data.push(item);
-    await writeData(data);
-    res.status(201).json(item);
+    
+    try {
+      await writeData(data);
+      res.status(201).json(item);
+    } catch (writeErr) {
+      const err = new Error('Failed to write file');
+      err.status = 500;
+      next(err); // Pass the error to the error handler
+    }
   } catch (err) {
     next(err);
   }
