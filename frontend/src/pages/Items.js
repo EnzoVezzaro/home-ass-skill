@@ -1,19 +1,47 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useData } from '../state/DataContext';
 import { Link } from 'react-router-dom';
 
 function Items() {
   const { items, fetchItems } = useData();
+  const isMountedRef = useRef(true);
 
   useEffect(() => {
-    let active = true;
+    // Create AbortController for request cancellation
+    const abortController = new AbortController();
+    isMountedRef.current = true;
 
-    // Intentional bug: setState called after component unmount if request is slow
-    fetchItems().catch(console.error);
+    // Fetch items with proper cleanup handling
+    const fetchData = async () => {
+      try {
+        // Pass abort signal if fetchItems supports it
+        await fetchItems(abortController.signal);
+        
+        // Only proceed if component is still mounted and request wasn't aborted
+        if (!isMountedRef.current || abortController.signal.aborted) {
+          console.log('Component unmounted or request aborted');
+          return;
+        }
+      } catch (error) {
+        // Don't log aborted requests as errors
+        if (error.name === 'AbortError') {
+          console.log('Request was cancelled');
+          return;
+        }
+        
+        // Only log actual errors if component is still mounted
+        if (isMountedRef.current) {
+          console.error('Error fetching items:', error);
+        }
+      }
+    };
 
-    // Clean‑up to avoid memory leak (candidate should implement)
+    fetchData();
+
+    // Cleanup function to prevent memory leaks
     return () => {
-      active = false;
+      isMountedRef.current = false;
+      abortController.abort(); // Cancel ongoing request
     };
   }, [fetchItems]);
 
@@ -23,7 +51,7 @@ function Items() {
     <ul>
       {items.map(item => (
         <li key={item.id}>
-          <Link to={'/items/' + item.id}>{item.name}</Link>
+          <Link to={`/items/${item.id}`}>{item.name}</Link>
         </li>
       ))}
     </ul>
