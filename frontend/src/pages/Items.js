@@ -1,60 +1,41 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useData } from '../state/DataContext';
-import Modal from '../components/Modal'; // Import the Modal component
-import { FixedSizeList } from 'react-window';
+import useDebounce from '../hooks/useDebounce';
+import Modal from '../components/Modal';
+import AssignmentInfo from '../components/AssignmentInfo';
+import Header from '../components/Header';
+import StarRating from '../components/StarRating';
 
-function Items() {
-  // Destructure items, fetchItems, totalPages, totalItems, selectedItem, isModalOpen, fetchItemById, closeModal from context
+function SimilarProducts() {
   const { items, fetchItems, totalPages: contextTotalPages, totalItems: contextTotalItems, selectedItem, isModalOpen, fetchItemById, closeModal } = useData(); 
-  const isMountedRef = useRef(true);
-  const abortControllerRef = useRef(null); // Use ref for AbortController to persist across renders
+  const searchInputRef = useRef(null);
 
-  // State for search and pagination
-  const [searchQuery, setSearchQuery] = useState(''); // Controlled input state
+  const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(5); // Default to match backend
-  const [isLoading, setIsLoading] = useState(true); // Loading state
-
-  // Use context values for totalPages and totalItems
+  const [itemsPerPage] = useState(8);
+  const [isLoading, setIsLoading] = useState(true);
+  
   const totalPages = contextTotalPages;
   const totalItems = contextTotalItems;
 
-  // Main effect for fetching data when dependencies change
-  useEffect(() => {
-    // Silently abort any previous request to avoid race conditions
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    abortControllerRef.current = new AbortController();
-    const signal = abortControllerRef.current.signal;
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
-    isMountedRef.current = true; // Mark component as mounted
+  // Fetch data effect
+  useEffect(() => {
+    const controller = new AbortController();
+    const { signal } = controller;
 
     const fetchData = async () => {
-      // Early return if component is unmounted
-      if (!isMountedRef.current) return;
-
-      setIsLoading(true); // Show loading state
-
+      setIsLoading(true);
       try {
-        // Fetch items with current search query, page, and items per page
-        await fetchItems(searchQuery, currentPage, itemsPerPage, signal);
-        
-        // Note: Pagination metadata is updated within fetchItems via context setters
-        // so we don't need to handle response data here
+        await fetchItems(debouncedSearchQuery, currentPage, itemsPerPage, signal);
       } catch (error) {
-        // Silently handle aborted requests - this is normal behavior during search/pagination
-        if (error.name === 'AbortError') {
-          return; // Don't log - this is expected when user types or changes pages
-        }
-        
-        // Only log actual errors if component is still mounted
-        if (isMountedRef.current) {
+        if (error.name !== 'AbortError') {
           console.error('Error fetching items:', error);
         }
       } finally {
-        // Always set loading to false when done (success or error)
-        if (isMountedRef.current) {
+        // Check if the component is still mounted before setting state
+        if (!signal.aborted) {
           setIsLoading(false);
         }
       }
@@ -62,122 +43,238 @@ function Items() {
 
     fetchData();
 
-    // Cleanup function to prevent memory leaks
     return () => {
-      isMountedRef.current = false;
-      // Silently abort on cleanup - this is normal behavior
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
+      controller.abort();
     };
-  }, [fetchItems, searchQuery, currentPage, itemsPerPage]); // Re-fetch when these change
+  }, [fetchItems, debouncedSearchQuery, currentPage, itemsPerPage]);
 
-  // Search input handler - maintains focus by using controlled component pattern
-  const handleSearchChange = (event) => {
+  // Stable memoized callbacks that won't change reference
+  const handleSearchChange = useCallback((event) => {
     setSearchQuery(event.target.value);
-    setCurrentPage(1); // Reset to first page when search changes
-  };
+  }, []);
 
-  // Pagination handlers
-  const handleNextPage = () => {
+  // Reset page to 1 when search query changes
+  useEffect(() => {
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+    }
+  }, [debouncedSearchQuery]);
+
+  // Keep focus on search input after search
+  useEffect(() => {
+    if (debouncedSearchQuery) {
+      searchInputRef.current?.focus();
+    }
+  }, [debouncedSearchQuery]);
+
+  const handleClearSearch = useCallback(() => {
+    setSearchQuery('');
+    setCurrentPage(1); // Always reset to page 1
+  }, []);
+
+  const handleNextPage = useCallback((e) => {
+    e.preventDefault(); 
     if (currentPage < totalPages) {
       setCurrentPage(currentPage + 1);
     }
-  };
+  }, [currentPage, totalPages]);
 
-  const handlePrevPage = () => {
+  const handlePrevPage = useCallback((e) => {
+    e.preventDefault(); 
     if (currentPage > 1) {
       setCurrentPage(currentPage - 1);
     }
-  };
+  }, [currentPage]);
 
-  // Handle item click to open modal
-  const handleItemClick = (item) => {
-    fetchItemById(item.id); // Fetch item details and open modal
-  };
+  const handlePageClick = useCallback((e, pageNum) => {
+    e.preventDefault(); 
+    setCurrentPage(pageNum);
+  }, []);
 
-  // Loading state - show loading indicator
+  const handleItemClick = useCallback((item) => {
+    fetchItemById(item.id);
+  }, [fetchItemById]);
+
   if (isLoading) {
     return (
-      <div className="container mx-auto p-4">
-        <div className="mb-4">
-          <input
-            type="text"
-            placeholder="Search items..."
-            value={searchQuery}
-            onChange={handleSearchChange}
-            className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+      <div className="bg-gray-50 min-h-screen">
+        <div className="container mx-auto px-6 py-8">
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">Products Available</h2>
+            <p className="text-gray-600 mb-6">
+              Loading available products from our inventory...
+            </p>
+          </div>
+          
+          {/* Loading skeleton */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className="bg-white rounded-xl border border-gray-200 p-6 animate-pulse shadow-sm">
+                <div className="h-40 bg-gray-200 rounded-lg mb-4"></div>
+                <div className="h-4 bg-gray-200 rounded mb-3"></div>
+                <div className="h-6 bg-gray-200 rounded mb-4 w-20"></div>
+                <div className="flex justify-between items-center">
+                  <div className="h-4 bg-gray-200 rounded w-24"></div>
+                  <div className="h-8 bg-gray-200 rounded w-20"></div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-        <p className="text-center text-gray-500">Loading...</p>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto p-4">
-      {/* Search Input */}
-      <div className="mb-4">
-        <input
-          type="text"
-          placeholder="Search items..."
-          value={searchQuery}
-          onChange={handleSearchChange}
-          className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+    <div className="bg-gray-50 min-h-screen">
+      <div className="container mx-auto px-6 py-8">
+        {/* Header */}
+        <Header 
+          ref={searchInputRef}
+          totalItems={totalItems}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          searchQuery={searchQuery}
+          onSearchChange={handleSearchChange}
+          onClear={handleClearSearch}
+        />
+
+        {/* Products Grid - Improved layout */}
+        {items.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-12">
+            {items.map((item, index) => (
+              <div 
+                key={item.id || index} 
+                className="bg-white rounded-xl border border-gray-200 hover:border-green-300 p-6 hover:shadow-lg transition-all duration-300 cursor-pointer group"
+                onClick={() => handleItemClick(item)}
+              >
+                {/* Product Image/Icon Area - Enhanced */}
+                <div className="relative h-40 bg-gradient-to-br from-green-50 to-green-100 rounded-lg mb-4 flex items-center justify-center group-hover:from-green-100 group-hover:to-green-200 transition-all duration-300 overflow-hidden">
+                  <div className="text-center transform group-hover:scale-105 transition-transform duration-300">
+                    <div className="w-16 h-16 bg-green-400 rounded-xl mx-auto mb-3 flex items-center justify-center shadow-lg">
+                      <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                      </svg>
+                    </div>
+                    <span className="text-sm font-medium text-gray-600">Product</span>
+                  </div>
+                  
+                  {/* Hover overlay */}
+                  <div className="absolute inset-0 bg-green-400 bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-300 rounded-lg"></div>
+                </div>
+
+                {/* Product Info - Enhanced */}
+                <div className="space-y-3">
+                  <div>
+                    <h3 className="font-semibold text-lg text-gray-800 mb-1 truncate group-hover:text-green-700 transition-colors">
+                      {item.name || 'Product Name'}
+                    </h3>
+                    <p className="text-sm text-gray-500 line-clamp-2">
+                      {item.description || 'High-quality product with excellent features and performance.'}
+                    </p>
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <p className="text-xl font-bold text-gray-900">
+                      €{item.price || '1,549.00'}
+                    </p>
+                    <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                      In Stock
+                    </span>
+                  </div>
+
+                  {/* Rating and Actions */}
+                  <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                    <StarRating rating={item.rating || 4.5} />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-16">
+            <div className="w-32 h-32 bg-gray-100 rounded-full mx-auto mb-6 flex items-center justify-center">
+              <svg className="w-16 h-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            <h3 className="text-xl font-semibold text-gray-700 mb-2">No products found</h3>
+            <p className="text-gray-500 mb-6">
+              {searchQuery ? `No results for "${searchQuery}"` : 'No products available at the moment'}
+            </p>
+            {searchQuery && (
+              <button
+                onClick={handleClearSearch}
+                className="px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+              >
+                Clear Search
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Pagination - Enhanced */}
+        {totalPages > 1 && (
+          <div className="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-6 mb-12">
+            <div className="flex items-center space-x-2">
+              <button 
+                onClick={handlePrevPage} 
+                disabled={currentPage === 1} 
+                className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                </svg>
+                <span>Previous</span>
+              </button>
+              
+              <div className="flex items-center space-x-2">
+                {[...Array(Math.min(5, totalPages))].map((_, i) => {
+                  const pageNum = currentPage <= 3 ? i + 1 : currentPage - 2 + i;
+                  if (pageNum > totalPages) return null;
+                  
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={(e) => handlePageClick(e, pageNum)}
+                      className={`w-10 h-10 rounded-lg font-medium transition-colors ${
+                        currentPage === pageNum
+                          ? 'bg-green-500 text-white'
+                          : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+              
+              <button 
+                onClick={handleNextPage} 
+                disabled={currentPage === totalPages} 
+                className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+              >
+                <span>Next</span>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Assignment Info Section */}
+        <AssignmentInfo />
+
+        {/* Modal */}
+        <Modal 
+          isOpen={isModalOpen} 
+          onClose={closeModal} 
+          item={selectedItem} 
         />
       </div>
-
-      {/* Items List */}
-      {items.length > 0 ? (
-        <FixedSizeList
-          height={400} // Adjust height as needed
-          itemCount={items.length}
-          itemSize={40} // Adjust item height for better spacing
-          width="100%"
-          itemData={{ items }} // Pass items
-        >
-          {({ index, style, data }) => (
-            <div 
-              style={style} 
-              className="p-2 border-b border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors duration-200 flex items-center justify-between"
-              onClick={() => handleItemClick(data.items[index])}
-            >
-              <span className="text-lg font-medium">{data.items[index].name}</span>
-              {/* Optionally add an icon or arrow here */}
-              <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path></svg>
-            </div>
-          )}
-        </FixedSizeList>
-      ) : (
-        <p className="text-center text-gray-500">No items found.</p>
-      )}
-
-      {/* Pagination Controls */}
-      {totalPages > 1 && (
-        <div className="flex justify-center items-center mt-4 space-x-2">
-          <button onClick={handlePrevPage} disabled={currentPage === 1} className="px-4 py-2 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed">
-            Previous
-          </button>
-          <span className="text-gray-700">Page {currentPage} of {totalPages}</span>
-          <button onClick={handleNextPage} disabled={currentPage === totalPages} className="px-4 py-2 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed">
-            Next
-          </button>
-        </div>
-      )}
-
-      {/* Display total items count */}
-      <div className="text-center mt-4 text-gray-600">
-        Showing {items.length} of {totalItems} items.
-      </div>
-
-      {/* Modal */}
-      <Modal 
-        isOpen={isModalOpen} 
-        onClose={closeModal} 
-        item={selectedItem} 
-      />
     </div>
   );
 }
 
-export default Items;
+export default SimilarProducts;
