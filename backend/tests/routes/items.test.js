@@ -63,8 +63,8 @@ describe('Items Routes', () => {
       expect(response.status).toBe(200);
       expect(response.body.items).toHaveLength(2);
       expect(response.body.items).toEqual([
-        { "id": 1, "name": "Laptop Pro", "category": "Electronics", "price": 2499 },
-        { "id": 2, "name": "Noise Cancelling Headphones", "category": "Electronics", "price": 399 }
+        { "id": 1, "name": "Laptop Pro", "category": "Electronics", "price": 2499, "rating": 4.8, "stock": 1 },
+        { "id": 2, "name": "Noise Cancelling Headphones", "category": "Electronics", "price": 399, "rating": 4.5, "stock": 1 }
       ]);
     });
 
@@ -75,8 +75,7 @@ describe('Items Routes', () => {
 
       expect(response.status).toBe(200);
       expect(response.body.items).toEqual([
-        { "id": 1, "name": "Laptop Pro", "category": "Electronics", "price": 2499, "rating": 4.8, "stock": 1 },
-        { "id": 2, "name": "Noise Cancelling Headphones", "category": "Electronics", "price": 399, "rating": 4.5, "stock": 1 }
+        { "id": 4, "name": "Ergonomic Chair", "category": "Furniture", "price": 799, "rating": 4.6, "stock": 1 }
       ]);
     });
 
@@ -88,12 +87,7 @@ describe('Items Routes', () => {
       expect(response.status).toBe(200);
       expect(response.body.items).toHaveLength(1);
       expect(response.body.items).toEqual([
-        { "id": 4, "name": "Ergonomic Chair", "category": "Furniture", "price": 799, "rating": 4.6, "stock": 1 }
-      ]);
-      expect(response.status).toBe(200);
-      expect(response.body.items).toHaveLength(1);
-      expect(response.body.items).toEqual([
-        { "id": 1, "name": "Laptop Pro", "category": "Electronics", "price": 2499, "rating": 4.8, "stock": 1 },
+        { "id": 1, "name": "Laptop Pro", "category": "Electronics", "price": 2499, "rating": 4.8, "stock": 1 }
       ]);
     });
 
