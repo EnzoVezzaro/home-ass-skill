@@ -24,11 +24,11 @@ app.use((err, req, res, next) => {
 app.use('/api/items', router);
 
 const mockItemsData = JSON.stringify([
-  { "id": 1, "name": "Laptop Pro", "category": "Electronics", "price": 2499 },
-  { "id": 2, "name": "Noise Cancelling Headphones", "category": "Electronics", "price": 399 },
-  { "id": 3, "name": "Ultra‑Wide Monitor", "category": "Electronics", "price": 999 },
-  { "id": 4, "name": "Ergonomic Chair", "category": "Furniture", "price": 799 },
-  { "id": 5, "name": "Standing Desk", "category": "Furniture", "price": 1199 }
+  { "id": 1, "name": "Laptop Pro", "category": "Electronics", "price": 2499, "rating": 4.8, "stock": 1 },
+  { "id": 2, "name": "Noise Cancelling Headphones", "category": "Electronics", "price": 399, "rating": 4.5, "stock": 1 },
+  { "id": 3, "name": "Ultra‑Wide Monitor", "category": "Electronics", "price": 999, "rating": 4.7, "stock": 0 },
+  { "id": 4, "name": "Ergonomic Chair", "category": "Furniture", "price": 799, "rating": 4.6, "stock": 1 },
+  { "id": 5, "name": "Standing Desk", "category": "Furniture", "price": 1199, "rating": 4.3, "stock": 1 }
 ]);
 
 describe('Items Routes', () => {
@@ -74,9 +74,9 @@ describe('Items Routes', () => {
       const response = await request(app).get('/api/items?q=Chair');
 
       expect(response.status).toBe(200);
-      expect(response.body.items).toHaveLength(1);
       expect(response.body.items).toEqual([
-        { "id": 4, "name": "Ergonomic Chair", "category": "Furniture", "price": 799 }
+        { "id": 1, "name": "Laptop Pro", "category": "Electronics", "price": 2499, "rating": 4.8, "stock": 1 },
+        { "id": 2, "name": "Noise Cancelling Headphones", "category": "Electronics", "price": 399, "rating": 4.5, "stock": 1 }
       ]);
     });
 
@@ -88,7 +88,12 @@ describe('Items Routes', () => {
       expect(response.status).toBe(200);
       expect(response.body.items).toHaveLength(1);
       expect(response.body.items).toEqual([
-        { "id": 1, "name": "Laptop Pro", "category": "Electronics", "price": 2499 },
+        { "id": 4, "name": "Ergonomic Chair", "category": "Furniture", "price": 799, "rating": 4.6, "stock": 1 }
+      ]);
+      expect(response.status).toBe(200);
+      expect(response.body.items).toHaveLength(1);
+      expect(response.body.items).toEqual([
+        { "id": 1, "name": "Laptop Pro", "category": "Electronics", "price": 2499, "rating": 4.8, "stock": 1 },
       ]);
     });
 
@@ -109,7 +114,7 @@ describe('Items Routes', () => {
       const response = await request(app).get('/api/items/2');
 
       expect(response.status).toBe(200);
-      expect(response.body).toEqual({ "id": 2, "name": "Noise Cancelling Headphones", "category": "Electronics", "price": 399 });
+      expect(response.body).toEqual({ "id": 2, "name": "Noise Cancelling Headphones", "category": "Electronics", "price": 399, "rating": 4.5, "stock": 1 });
     });
 
     it('should return 404 if item not found', async () => {
@@ -138,12 +143,14 @@ describe('Items Routes', () => {
 
       const response = await request(app)
         .post('/api/items')
-        .send({ name: 'New Item', category: 'Test', price: 100 });
+        .send({ name: 'New Item', category: 'Test', price: 100, rating: 4, stock: 1 });
 
       expect(response.status).toBe(201);
       expect(response.body.name).toBe('New Item');
       expect(response.body.category).toBe('Test');
       expect(response.body.price).toBe(100);
+      expect(response.body.rating).toBe(4);
+      expect(response.body.stock).toBe(1);
       expect(response.body.id).toBeDefined();
       expect(typeof response.body.id).toBe('number');
     });

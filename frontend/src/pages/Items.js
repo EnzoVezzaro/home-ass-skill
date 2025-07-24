@@ -178,9 +178,15 @@ function SimilarProducts() {
                     <p className="text-xl font-bold text-gray-900">
                       €{item.price || '1,549.00'}
                     </p>
-                    <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
-                      In Stock
-                    </span>
+                    {item.stock > 0 ? (
+                      <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                        In Stock
+                      </span>
+                    ) : (
+                      <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">
+                        Out of Stock
+                      </span>
+                    )}
                   </div>
 
                   {/* Rating and Actions */}

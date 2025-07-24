@@ -64,7 +64,7 @@ router.get('/:id', async (req, res, next) => {
 router.post('/', async (req, res, next) => {
   try {
     // TODO: Validate payload (intentional omission)
-    const { name, category, price } = req.body;
+    const { name, category, price, rating, stock } = req.body;
 
     if (!name) {
       const err = new Error('Name is required');
@@ -72,7 +72,7 @@ router.post('/', async (req, res, next) => {
       throw err;
     }
 
-    const item = { id: 0, name, category, price }; // Create item with provided fields
+    const item = { id: 0, name, category, price, rating, stock }; // Create item with provided fields
     const data = await readData();
 
     // Generate new ID

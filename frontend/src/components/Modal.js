@@ -55,8 +55,19 @@ function Modal({ isOpen, onClose, item }) {
               </div>
             </div>
 
+            <div className="flex items-center justify-between mb-6">
+                {item.stock > 0 ? (
+                    <span className="text-lg font-semibold text-green-600">In Stock</span>
+                ) : (
+                    <span className="text-lg font-semibold text-red-600">Out of Stock</span>
+                )}
+            </div>
+
             <div className="space-y-4">
-              <button className="w-full bg-green-500 text-white font-bold py-4 px-6 rounded-xl hover:bg-green-600 transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-1">
+              <button 
+                className={`w-full text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-1 ${item.stock > 0 ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-400 cursor-not-allowed'}`}
+                disabled={item.stock === 0}
+              >
                 Add to Cart
               </button>
               <button className="w-full bg-gray-100 text-gray-800 font-bold py-4 px-6 rounded-xl hover:bg-gray-200 transition-all duration-300">
