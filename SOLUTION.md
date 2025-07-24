@@ -1,0 +1,3 @@
+- add .env file to .gitignore
+- change npm to pnpm
+- change port backend from 5000 to 8000
